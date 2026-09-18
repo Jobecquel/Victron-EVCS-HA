@@ -1,0 +1,115 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to your EV Charging Station",
+        "description": "Enter the address of the charger itself, not of a GX device.",
+        "data": {
+          "host": "Host",
+          "scan_interval": "Polling interval"
+        },
+        "data_description": {
+          "host": "The IP address or hostname of the charger, for example 192.168.1.50.",
+          "scan_interval": "How often to poll the charger, in seconds."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the charger. Check the address and that the charger is on the same network.",
+      "unexpected_response": "That address answered, but it does not look like a Victron EV Charging Station."
+    },
+    "abort": {
+      "already_configured": "This charger is already set up."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Polling options",
+        "data": {
+          "scan_interval": "Polling interval"
+        },
+        "data_description": {
+          "scan_interval": "How often to poll the charger, in seconds."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "start_stop_failed": {
+      "message": "The charger did not accept the start/stop command: {error}"
+    },
+    "set_current_failed": {
+      "message": "The charger did not accept the new charging current: {error}"
+    },
+    "set_mode_failed": {
+      "message": "The charger did not accept the new charging mode: {error}"
+    },
+    "mode_unavailable": {
+      "message": "The {mode} mode is not available on this charger. Auto mode needs a paired GX device and scheduled mode needs a configured schedule."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "car_connected": { "name": "Car connected" },
+      "charging": { "name": "Charging" },
+      "problem": { "name": "Problem" },
+      "warning": { "name": "Warning" }
+    },
+    "number": {
+      "charging_current": { "name": "Charging current" }
+    },
+    "select": {
+      "charging_mode": {
+        "name": "Charging mode",
+        "state": {
+          "manual": "Manual",
+          "auto": "Auto",
+          "scheduled": "Scheduled"
+        }
+      }
+    },
+    "switch": {
+      "charging": { "name": "Charging" }
+    },
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "disconnected": "Disconnected",
+          "connected": "Connected",
+          "waiting_for_start": "Waiting for start",
+          "waiting_for_sun": "Waiting for sun",
+          "waiting_for_rfid": "Waiting for RFID",
+          "low_soc": "Low battery SoC",
+          "charging": "Charging",
+          "charged": "Charged",
+          "limit": "Charging limit",
+          "starting": "Starting",
+          "switching_to_3p": "Switching to 3-phase",
+          "switching_to_1p": "Switching to 1-phase",
+          "stopping": "Stopping"
+        }
+      },
+      "charging_power": { "name": "Charging power" },
+      "charging_power_l1": { "name": "Charging power L1" },
+      "charging_power_l2": { "name": "Charging power L2" },
+      "charging_power_l3": { "name": "Charging power L3" },
+      "charging_current": { "name": "Charging current" },
+      "session_energy": { "name": "Session energy" },
+      "total_energy": { "name": "Total energy" },
+      "session_duration": { "name": "Session duration" },
+      "session_cost": { "name": "Session cost" },
+      "session_saved_cost": { "name": "Session saved cost" },
+      "cp_voltage": { "name": "Control pilot voltage" },
+      "temperature": { "name": "Temperature" },
+      "cp_duty_cycle": { "name": "Control pilot duty cycle" },
+      "configured_phases": { "name": "Configured phases" },
+      "wifi_signal": { "name": "Wi-Fi signal" },
+      "uptime": { "name": "Uptime" },
+      "device_time": { "name": "Device time" },
+      "error": { "name": "Active error" },
+      "warning": { "name": "Active warning" }
+    }
+  }
+}
