@@ -23,22 +23,6 @@ MQTT broker are involved.
 
 ![local polling](https://img.shields.io/badge/iot__class-local__polling-blue)
 
-## Why not Modbus?
-
-Victron documents Modbus TCP (unit 1, registers 5000–5199) as the integration path, and
-that is what evcc uses. It works well — *when it is reachable*. The charger also has a
-ModbusTCP IP whitelist (`Settings → General → EVCS ModbusTCP Server`); when it is enabled
-and the client is not on it, port 502 still accepts connections and still returns
-well-formed Modbus replies, but **every register reads zero**, including the product-ID
-register. That is a confusing failure mode to debug.
-
-The HTTP API has no whitelist, needs no charger-side configuration, and exposes strictly
-more than Modbus does — sensor temperatures, control-pilot duty cycle, session cost, and
-the human-readable error and warning strings. So that is what this integration uses.
-
-If you also want to run evcc over Modbus, add the relevant hosts to the charger's
-whitelist; the two can coexist.
-
 ## Compatibility
 
 Developed against an **EV Charging Station NS (product `C026`, firmware `v2.1`)**.
