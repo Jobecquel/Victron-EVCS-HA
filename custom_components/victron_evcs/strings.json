@@ -45,6 +45,9 @@
     "set_mode_failed": {
       "message": "The charger did not accept the new charging mode: {error}"
     },
+    "reboot_failed": {
+      "message": "The charger did not accept the reboot command: {error}"
+    },
     "mode_unavailable": {
       "message": "The {mode} mode is not available on this charger. Auto mode needs a paired GX device and scheduled mode needs a configured schedule."
     }
@@ -55,6 +58,9 @@
       "charging": { "name": "Charging" },
       "problem": { "name": "Problem" },
       "warning": { "name": "Warning" }
+    },
+    "button": {
+      "reboot": { "name": "Reboot" }
     },
     "number": {
       "charging_current": { "name": "Charging current" }
