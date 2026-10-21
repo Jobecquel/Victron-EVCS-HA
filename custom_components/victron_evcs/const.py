@@ -14,6 +14,17 @@ MAX_SCAN_INTERVAL: Final = 300
 # Fast cycles between reads of the slow/diagnostic endpoints.
 SLOW_UPDATE_CYCLES: Final = 6
 
+# The charger's Wi-Fi drops single polls all the time, so a failed poll keeps
+# the last data for this long (seconds) before the entities go unavailable.
+UNAVAILABLE_GRACE: Final = 90
+
+# Once the HTTP API has been unreachable this long (seconds) the charger is
+# rebooted over Modbus, and again every FAILSAFE_RETRY while it stays down. A
+# reboot also ends any charging session, so a hung web server can no longer
+# leave the car charging at whatever current was last set.
+FAILSAFE_AFTER: Final = 300
+FAILSAFE_RETRY: Final = 900
+
 MANUFACTURER: Final = "Victron Energy"
 DEFAULT_MODEL: Final = "EV Charging Station"
 

@@ -72,6 +72,13 @@ BINARY_SENSORS: tuple[VictronEvcsBinarySensorDescription, ...] = (
 )
 
 
+CONNECTIVITY_SENSOR = BinarySensorEntityDescription(
+    key="connectivity",
+    device_class=BinarySensorDeviceClass.CONNECTIVITY,
+    entity_category=EntityCategory.DIAGNOSTIC,
+)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: VictronEvcsConfigEntry,
@@ -80,8 +87,13 @@ async def async_setup_entry(
     """Set up the binary sensors."""
     coordinator = entry.runtime_data
     async_add_entities(
-        VictronEvcsBinarySensor(coordinator, description)
-        for description in BINARY_SENSORS
+        [
+            *(
+                VictronEvcsBinarySensor(coordinator, description)
+                for description in BINARY_SENSORS
+            ),
+            VictronEvcsConnectivitySensor(coordinator, CONNECTIVITY_SENSOR),
+        ]
     )
 
 
@@ -94,3 +106,17 @@ class VictronEvcsBinarySensor(VictronEvcsEntity, BinarySensorEntity):
     def is_on(self) -> bool:
         """Return the state of the binary sensor."""
         return self.entity_description.value_fn(self.data)
+
+
+class VictronEvcsConnectivitySensor(VictronEvcsEntity, BinarySensorEntity):
+    """Whether the charger's HTTP API answered the last poll."""
+
+    @property
+    def available(self) -> bool:
+        """Stay available, reporting the outage instead of hiding it."""
+        return True
+
+    @property
+    def is_on(self) -> bool:
+        """Return True while the charger answers."""
+        return self.coordinator.link.connected

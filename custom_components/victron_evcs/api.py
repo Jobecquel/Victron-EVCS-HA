@@ -32,6 +32,7 @@ EP_CHARGING_START = "/chargingStart"
 EP_CHARGING_STOP = "/chargingStop"
 EP_CURRENT_SET = "/chargingCurrentSet"
 EP_MODE_SET = "/chargingModeSet"
+EP_RESTART = "/sysRestart"
 
 
 class VictronEvcsError(Exception):
@@ -166,13 +167,27 @@ class VictronEvcsClient:
     async def async_reboot(self) -> None:
         """Reboot the charger.
 
-        The HTTP API has no reboot command, so this writes the EVCS reset
-        register over Modbus TCP. That also works when the web server has hung.
-        If the charger's Modbus IP whitelist is enabled, Home Assistant must be
-        on it or the command is silently ignored.
+        Tries the web UI's own restart command first and falls back to Modbus
+        when the web server does not answer, which is exactly when a reboot is
+        most needed.
+        """
+        try:
+            await self._command(EP_RESTART)
+        except VictronEvcsError as err:
+            _LOGGER.debug("HTTP restart failed (%s), trying Modbus", err)
+            await self.async_reboot_modbus()
+            return
+        _LOGGER.info("Reboot command sent to %s over HTTP", self._host)
+
+    async def async_reboot_modbus(self) -> None:
+        """Reboot the charger over Modbus TCP.
+
+        Writes the EVCS reset register, which works while the web server has
+        hung. If the charger's Modbus IP whitelist is enabled, Home Assistant
+        must be on it or the command is silently ignored.
         """
         try:
             await async_write_register(self._host, REG_RESET, 1)
         except ModbusError as err:
             raise VictronEvcsCommandError(f"Reboot failed: {err}") from err
-        _LOGGER.info("Reboot command sent to %s", self._host)
+        _LOGGER.info("Reboot command sent to %s over Modbus", self._host)

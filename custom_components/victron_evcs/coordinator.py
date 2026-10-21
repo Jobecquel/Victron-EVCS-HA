@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from datetime import timedelta
+from time import monotonic
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import HomeAssistant
@@ -15,10 +16,14 @@ from .api import VictronEvcsClient, VictronEvcsError
 from .const import (
     DEFAULT_MODEL,
     DOMAIN,
+    FAILSAFE_AFTER,
+    FAILSAFE_RETRY,
     MANUFACTURER,
     PRODUCT_MODELS,
     SLOW_UPDATE_CYCLES,
+    UNAVAILABLE_GRACE,
 )
+from .helpers import LinkMonitor
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -62,6 +67,7 @@ class VictronEvcsCoordinator(DataUpdateCoordinator[VictronEvcsData]):
         self._cycle = 0
         self._sensors: dict[str, Any] = {}
         self._common: dict[str, Any] = {}
+        self.link = LinkMonitor(UNAVAILABLE_GRACE, FAILSAFE_AFTER, FAILSAFE_RETRY)
 
     async def _async_setup(self) -> None:
         """Read the charger's identity once, before the first refresh."""
@@ -89,8 +95,15 @@ class VictronEvcsCoordinator(DataUpdateCoordinator[VictronEvcsData]):
                 self._sensors = await self.client.async_sensors()
                 self._common = await self.client.async_common_data()
         except VictronEvcsError as err:
+            now = monotonic()
+            self.link.failure(now)
+            await self._async_failsafe(now)
+            if self.data is not None and self.link.within_grace(now):
+                _LOGGER.debug("Poll failed, keeping the last data for now: %s", err)
+                return self.data
             raise UpdateFailed(str(err)) from err
 
+        self.link.success()
         self._cycle += 1
         if name := actual.get("deviceName"):
             self.device_name = name
@@ -101,6 +114,20 @@ class VictronEvcsCoordinator(DataUpdateCoordinator[VictronEvcsData]):
             sensors=self._sensors,
             common=self._common,
         )
+
+    async def _async_failsafe(self, now: float) -> None:
+        """Reboot the charger over Modbus once HTTP has been down too long."""
+        if not self.link.failsafe_due(now):
+            return
+        self.link.failsafe_sent(now)
+        _LOGGER.warning(
+            "Charger unreachable over HTTP for %d s, rebooting it over Modbus",
+            self.link.lost_for(now),
+        )
+        try:
+            await self.client.async_reboot_modbus()
+        except VictronEvcsError as err:
+            _LOGGER.warning("Failsafe reboot failed: %s", err)
 
     @property
     def device_info(self) -> DeviceInfo:

@@ -21,6 +21,7 @@ _pkg.__path__ = [str(_COMPONENT)]
 sys.modules.setdefault("victron_evcs", _pkg)
 
 from victron_evcs.helpers import (  # noqa: E402
+    LinkMonitor,
     active_phase_count,
     charging_status,
     is_charging_enabled,
@@ -178,3 +179,43 @@ class TestActivePhaseCount:
     def test_missing_values_ignored(self) -> None:
         """Absent phases do not count."""
         assert active_phase_count(3680.0, None, None) == 1
+
+
+def test_link_rides_out_short_failures() -> None:
+    link = LinkMonitor(grace=90, failsafe_after=300, failsafe_retry=900)
+    assert link.connected
+    link.failure(1000)
+    assert not link.connected
+    assert link.within_grace(1080)
+    assert not link.within_grace(1090)
+    link.success()
+    assert link.connected
+    assert link.within_grace(5000)
+
+
+def test_link_failure_keeps_first_timestamp() -> None:
+    link = LinkMonitor(grace=90, failsafe_after=300, failsafe_retry=900)
+    link.failure(1000)
+    link.failure(1060)
+    assert link.lost_for(1100) == 100
+
+
+def test_failsafe_fires_once_then_retries() -> None:
+    link = LinkMonitor(grace=90, failsafe_after=300, failsafe_retry=900)
+    link.failure(0)
+    assert not link.failsafe_due(299)
+    assert link.failsafe_due(300)
+    link.failsafe_sent(300)
+    assert not link.failsafe_due(320)
+    assert not link.failsafe_due(1199)
+    assert link.failsafe_due(1200)
+
+
+def test_failsafe_rearms_after_recovery() -> None:
+    link = LinkMonitor(grace=90, failsafe_after=300, failsafe_retry=900)
+    link.failure(0)
+    link.failsafe_sent(300)
+    link.success()
+    assert not link.failsafe_due(400)
+    link.failure(400)
+    assert link.failsafe_due(700)

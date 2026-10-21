@@ -42,8 +42,8 @@ class VictronEvcsRebootButton(VictronEvcsEntity, ButtonEntity):
     def available(self) -> bool:
         """Stay available when polling fails.
 
-        The reboot goes over Modbus, not HTTP, and a hung web server is exactly
-        when it is needed.
+        The reboot falls back to Modbus when HTTP fails, and a hung web server
+        is exactly when it is needed.
         """
         return True
 

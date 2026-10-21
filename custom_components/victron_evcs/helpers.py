@@ -82,3 +82,52 @@ def is_charging_enabled(car_state: int | None, car_sub_state: int | None) -> boo
 def active_phase_count(*phase_powers: float | None) -> int:
     """Return how many phases are currently drawing power."""
     return sum(1 for power in phase_powers if power is not None and power > 0)
+
+
+class LinkMonitor:
+    """Tracks how long the charger's HTTP API has been unreachable.
+
+    Times are plain seconds from a monotonic clock, passed in by the caller so
+    the logic can be tested without waiting.
+    """
+
+    def __init__(self, grace: float, failsafe_after: float, failsafe_retry: float) -> None:
+        """Initialise with the link up."""
+        self._grace = grace
+        self._failsafe_after = failsafe_after
+        self._failsafe_retry = failsafe_retry
+        self._lost_since: float | None = None
+        self._last_failsafe: float | None = None
+
+    @property
+    def connected(self) -> bool:
+        """Return True while the last poll succeeded."""
+        return self._lost_since is None
+
+    def success(self) -> None:
+        """Record a successful poll."""
+        self._lost_since = None
+        self._last_failsafe = None
+
+    def failure(self, now: float) -> None:
+        """Record a failed poll."""
+        if self._lost_since is None:
+            self._lost_since = now
+
+    def lost_for(self, now: float) -> float:
+        """Return how long the link has been down, 0 if it is up."""
+        return 0.0 if self._lost_since is None else now - self._lost_since
+
+    def within_grace(self, now: float) -> bool:
+        """Return True while a failure is still short enough to ride out."""
+        return self.lost_for(now) < self._grace
+
+    def failsafe_due(self, now: float) -> bool:
+        """Return True when the failsafe reboot should be sent now."""
+        if self.lost_for(now) < self._failsafe_after:
+            return False
+        return self._last_failsafe is None or now - self._last_failsafe >= self._failsafe_retry
+
+    def failsafe_sent(self, now: float) -> None:
+        """Record that the failsafe reboot was sent."""
+        self._last_failsafe = now
