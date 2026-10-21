@@ -16,12 +16,9 @@ from .api import VictronEvcsClient, VictronEvcsError
 from .const import (
     DEFAULT_MODEL,
     DOMAIN,
-    FAILSAFE_AFTER,
-    FAILSAFE_RETRY,
     MANUFACTURER,
     PRODUCT_MODELS,
     SLOW_UPDATE_CYCLES,
-    UNAVAILABLE_GRACE,
 )
 from .helpers import LinkMonitor
 
@@ -50,6 +47,7 @@ class VictronEvcsCoordinator(DataUpdateCoordinator[VictronEvcsData]):
         entry: ConfigEntry,
         client: VictronEvcsClient,
         scan_interval: int,
+        link: LinkMonitor,
     ) -> None:
         """Initialise the coordinator."""
         super().__init__(
@@ -67,7 +65,7 @@ class VictronEvcsCoordinator(DataUpdateCoordinator[VictronEvcsData]):
         self._cycle = 0
         self._sensors: dict[str, Any] = {}
         self._common: dict[str, Any] = {}
-        self.link = LinkMonitor(UNAVAILABLE_GRACE, FAILSAFE_AFTER, FAILSAFE_RETRY)
+        self.link = link
 
     async def _async_setup(self) -> None:
         """Read the charger's identity once, before the first refresh."""
@@ -97,7 +95,7 @@ class VictronEvcsCoordinator(DataUpdateCoordinator[VictronEvcsData]):
         except VictronEvcsError as err:
             now = monotonic()
             self.link.failure(now)
-            await self._async_failsafe(now)
+            await self.async_failsafe(now)
             if self.data is not None and self.link.within_grace(now):
                 _LOGGER.debug("Poll failed, keeping the last data for now: %s", err)
                 return self.data
@@ -115,7 +113,7 @@ class VictronEvcsCoordinator(DataUpdateCoordinator[VictronEvcsData]):
             common=self._common,
         )
 
-    async def _async_failsafe(self, now: float) -> None:
+    async def async_failsafe(self, now: float) -> None:
         """Reboot the charger over Modbus once HTTP has been down too long."""
         if not self.link.failsafe_due(now):
             return
